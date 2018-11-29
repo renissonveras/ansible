@@ -1,0 +1,64 @@
+---
+- hosts: banco
+  become: yes
+  tasks:
+  - name: Instala banco no servidor de banco
+    yum:
+     name: mariadb-server
+     state: latest
+
+  - name: Instala Mysql Python
+    yum:
+     name: MySQL-python
+     state: latest
+
+  - name: MariaDB | Starting and enabled database
+    service:
+     name: mariadb
+     state: started
+     enabled: yes
+
+  - name: Create a new database
+    mysql_db:
+     name: bobdata
+     state: present
+
+  - name: Criando um novo usuario
+    mysql_user:
+     name: bob
+     password: 12345
+     priv: '*.*:ALL'
+     state: present
+
+- hosts: web
+  become: yes
+  tasks:
+  - name: Instala php no servidor web
+    yum:
+     name: php
+     state: latest
+
+  - name: Substituia o arquivo de configuração httd.conf 
+    template: src=/workshop/index.php dest=/var/www/html/index.php
+
+#  - name: Check that you can connect (GET) to a page and it returns a status 200
+#    uri:
+#     url: http://renisson-mprr-server1/index.php
+
+  - name: ensure apache is running (and enable it at boot)
+    service: name=httpd state=started enabled=yes
+
+  - name: Verifica a permissão do arquivo
+    file:
+      path: /var/www/html/index.php
+      owner: apache
+      group: apache
+      mode: 0644
+
+  - name: Verifica se o phpinfo esta respondendo
+    uri:
+      url: http://renisson-mprr-server1/index.php
+      return_content: yes
+    register: this
+    failed_when: "'PHP Version' not in this.content"
+ 
